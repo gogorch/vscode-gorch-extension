@@ -1,0 +1,111 @@
+{
+  "START Directive": {
+    "prefix": "start",
+    "body": [
+      "START(\"${1:name}\"){",
+      "\t${2:// execution statements}",
+      "}"
+    ],
+    "description": "Create a START directive"
+  },
+  "FRAGMENT Directive": {
+    "prefix": "fragment",
+    "body": [
+      "FRAGMENT(\"${1:name}\"){",
+      "\t${2:// execution statements}",
+      "}"
+    ],
+    "description": "Create a FRAGMENT directive"
+  },
+  "REGISTER Directive": {
+    "prefix": "register",
+    "body": [
+      "REGISTER(\"${1:package}\"){",
+      "\tOPERATOR(\"${2:path}\", \"${3:struct}\", ${4:sequence})",
+      "}"
+    ],
+    "description": "Create a REGISTER directive"
+  },
+  "OPERATOR Registration": {
+    "prefix": "operator",
+    "body": [
+      "OPERATOR(\"${1:path}\", \"${2:struct}\", \"${3:name}\", ${4:sequence})"
+    ],
+    "description": "Register an operator"
+  },
+  "ON_FINISH Block": {
+    "prefix": "onfinish",
+    "body": [
+      "ON_FINISH() {",
+      "\t${1:// cleanup statements}",
+      "}"
+    ],
+    "description": "Create an ON_FINISH block"
+  },
+  "UNFOLD Directive": {
+    "prefix": "unfold",
+    "body": [
+      "UNFOLD(\"${1:fragment_name}\")"
+    ],
+    "description": "Unfold a fragment"
+  },
+  "GO Directive": {
+    "prefix": "go",
+    "body": [
+      "GO(${1:operator}, \"${2:name}\")"
+    ],
+    "description": "Create a GO directive for async execution"
+  },
+  "WAIT Directive": {
+    "prefix": "wait",
+    "body": [
+      "WAIT(\"${1:name}\", timeout=${2:10ms})"
+    ],
+    "description": "Wait for async operation"
+  },
+  "SWITCH Statement": {
+    "prefix": "switch",
+    "body": [
+      "SWITCH(${1:operator}) {",
+      "\tCASE \"${2:value}\" => ${3:operator},",
+      "\tCASE \"${4:value}\" => ${5:operator}",
+      "}"
+    ],
+    "description": "Create a SWITCH statement"
+  },
+  "SKIP Directive": {
+    "prefix": "skip",
+    "body": [
+      "SKIP(${1:operator})"
+    ],
+    "description": "Skip an operator in serial execution"
+  },
+  "Serial Execution": {
+    "prefix": "serial",
+    "body": [
+      "${1:operator1} -> ${2:operator2} -> ${3:operator3}"
+    ],
+    "description": "Serial execution with arrow operator"
+  },
+  "Concurrent Execution": {
+    "prefix": "concurrent",
+    "body": [
+      "[${1:operator1}, ${2:operator2}, ${3:operator3}]"
+    ],
+    "description": "Concurrent execution with brackets"
+  },
+  "Operator with Parameters": {
+    "prefix": "op",
+    "body": [
+      "${1:operatorName}(${2:param}=${3:value})"
+    ],
+    "description": "Operator call with parameters"
+  },
+  "Wrap Operator": {
+    "prefix": "wrap",
+    "body": [
+      "(${1:wrapper} | ${2:target})"
+    ],
+    "description": "Wrap operator syntax"
+  }
+}

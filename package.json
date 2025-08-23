@@ -1,0 +1,71 @@
+{
+  "name": "gorch-language-support",
+  "displayName": "Gorch Language Support",
+  "description": "Syntax highlighting and language support for Gorch DSL",
+  "version": "1.0.0",
+  "publisher": "gorch-team",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "keywords": [
+    "gorch",
+    "dsl",
+    "graph",
+    "execution",
+    "workflow"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "gorch",
+        "aliases": [
+          "Gorch",
+          "gorch"
+        ],
+        "extensions": [
+          ".gorch"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/gorch-light.svg",
+          "dark": "./icons/gorch-dark.svg"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "gorch",
+        "scopeName": "source.gorch",
+        "path": "./syntaxes/gorch.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "gorch",
+        "path": "./snippets/gorch.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package",
+    "install-local": "code --install-extension *.vsix"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.74.0",
+    "@types/node": "16.x",
+    "typescript": "^4.9.4",
+    "@vscode/vsce": "^2.15.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gogorch/vscode-gorch-extension.git"
+  },
+  "license": "MIT"
+}

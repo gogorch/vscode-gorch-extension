@@ -1,0 +1,37 @@
+// Gorch DSL 示例文件
+// 展示语法高亮和代码片段功能
+
+START("web_api", timeout=30s){
+    ON_FINISH() { 
+        cleanup(onfinish=true)
+        logger(message="Request completed")
+    }
+
+    // 请求处理流程
+    UNFOLD("request_validation")
+    -> auth_check(strict=true)
+    -> [rate_limiter(max=100), parser(format="json"), scanner()]
+    -> SWITCH(router) {
+        CASE "v1" => UNFOLD("api_v1"),
+        CASE "v2" => UNFOLD("api_v2")
+    }
+    -> formatter(WAIT("metrics", timeout=50ms))
+}
+
+FRAGMENT("request_validation"){
+    @validator(fatal=true) -> GO(metrics_collector(), "metrics")
+}
+
+FRAGMENT("api_v1"){
+    fetcher(source="db") -> processor(version=1)
+}
+
+FRAGMENT("api_v2"){
+    [fetcher(source="cache"), permission_check()] -> processor(version=2)
+}
+
+REGISTER("github.com/example/ops"){
+    OPERATOR("auth", "AuthChecker", "auth_check", 1)
+    OPERATOR("validation", "Validator", "validator", 2)
+    OPERATOR("routing", "Router", "router", 3)
+}

@@ -1,0 +1,22 @@
+# Source files
+src/**
+tsconfig.json
+.gitignore
+
+# Build scripts and development files
+scripts/**
+.vscode/**
+examples/**
+
+# Dependencies and build artifacts
+node_modules/**
+*.vsix
+
+# Documentation (keep only README.md)
+QUICKSTART.md
+
+# Logs and temporary files
+*.log
+npm-debug.log*
+.DS_Store
+.env
