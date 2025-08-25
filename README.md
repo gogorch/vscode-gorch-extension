@@ -27,6 +27,11 @@
 - **智能缩进**: 基于语法结构的智能缩进
 - **代码折叠**: 支持代码块折叠
 
+### 🎯 Go to Definition (算子跳转)
+- **算子跳转**: 点击算子名称跳转到对应的 Go struct 实现
+- **智能查找**: 自动搜索工作区中的 Go 文件
+- **快捷操作**: 支持 `F12`、`Ctrl+Click` 等快捷方式
+
 ## 开发和安装
 
 ### 开发环境设置
@@ -69,6 +74,7 @@ code --install-extension gorch-language-support-*.vsix
 1. 创建 `.gorch` 文件
 2. VSCode 会自动识别文件类型并应用语法高亮
 3. 使用代码片段快速编写 Gorch DSL 代码
+4. 点击算子名称跳转到 Go struct 实现（需要 REGISTER 块）
 
 ## 示例代码
 

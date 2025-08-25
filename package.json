@@ -18,7 +18,24 @@
     "workflow"
   ],
   "main": "./out/extension.js",
+  "activationEvents": [
+    "onLanguage:gorch",
+    "onCommand:gorch.format",
+    "onCommand:gorch.validate"
+  ],
   "contributes": {
+    "commands": [
+      {
+        "command": "gorch.format",
+        "title": "Format Document",
+        "category": "Gorch"
+      },
+      {
+        "command": "gorch.validate",
+        "title": "Validate and Show Operators",
+        "category": "Gorch"
+      }
+    ],
     "languages": [
       {
         "id": "gorch",
