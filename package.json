@@ -21,7 +21,10 @@
   "activationEvents": [
     "onLanguage:gorch",
     "onCommand:gorch.format",
-    "onCommand:gorch.validate"
+    "onCommand:gorch.validate",
+    "onCommand:gorch.refreshIndex",
+    "onCommand:gorch.showOutput",
+    "onCommand:gorch.clearOutput"
   ],
   "contributes": {
     "commands": [
@@ -33,6 +36,21 @@
       {
         "command": "gorch.validate",
         "title": "Validate and Show Operators",
+        "category": "Gorch"
+      },
+      {
+        "command": "gorch.refreshIndex",
+        "title": "Refresh Index",
+        "category": "Gorch"
+      },
+      {
+        "command": "gorch.showOutput",
+        "title": "Show Output",
+        "category": "Gorch"
+      },
+      {
+        "command": "gorch.clearOutput",
+        "title": "Clear Output",
         "category": "Gorch"
       }
     ],
