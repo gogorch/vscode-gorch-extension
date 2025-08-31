@@ -31,6 +31,13 @@ export class OutputService {
     }
 
     /**
+     * 获取当前日志级别
+     */
+    public getLogLevel(): string {
+        return this.logLevel;
+    }
+
+    /**
      * 记录日志消息
      */
     public log(level: LogLevel, message: string, source?: string): void {
@@ -159,8 +166,40 @@ export class OutputService {
     /**
      * 记录跳转操作
      */
-    public logDefinitionJump(from: string, to: string, type: 'operator' | 'fragment' | 'struct'): void {
-        this.debug(`Definition jump (${type}): ${from} -> ${to}`, 'Navigation');
+    public logDefinitionJump(from: string, to: string, type: 'operator' | 'fragment' | 'struct', method: 'index' | 'go-extension' | 'real-time-scan' = 'index'): void {
+        this.info(`🔍 Definition jump (${type}) via ${method}: ${from} -> ${to}`, 'Navigation');
+    }
+
+    /**
+     * 记录定义查找开始
+     */
+    public logDefinitionStart(word: string, position: string, context: string): void {
+        this.info(`🎯 Definition lookup started: "${word}" at ${position} (${context})`, 'Navigation');
+    }
+
+    /**
+     * 记录索引查找结果
+     */
+    public logIndexLookup(word: string, found: boolean, type: 'operator' | 'fragment' | 'struct'): void {
+        const status = found ? '✅' : '❌';
+        this.debug(`${status} Index lookup for ${type}: "${word}" - ${found ? 'FOUND' : 'NOT FOUND'}`, 'Navigation');
+    }
+
+    /**
+     * 记录Go扩展查找结果
+     */
+    public logGoExtensionLookup(structName: string, found: boolean, error?: string): void {
+        const status = found ? '✅' : '❌';
+        const errorMsg = error ? ` (Error: ${error})` : '';
+        this.debug(`${status} Go extension lookup: "${structName}" - ${found ? 'FOUND' : 'NOT FOUND'}${errorMsg}`, 'Navigation');
+    }
+
+    /**
+     * 记录实时扫描结果
+     */
+    public logRealTimeScan(structName: string, found: boolean): void {
+        const status = found ? '✅' : '❌';
+        this.debug(`${status} Real-time scan: "${structName}" - ${found ? 'FOUND' : 'NOT FOUND'}`, 'Navigation');
     }
 
     /**

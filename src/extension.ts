@@ -125,6 +125,18 @@ function registerCommands(
         vscode.window.showInformationMessage(`Diagnostic check completed for ${gorchDocs.length} files`);
     });
 
+    // 切换详细日志命令
+    const toggleVerboseLoggingCommand = vscode.commands.registerCommand('gorch.toggleVerboseLogging', () => {
+        const currentLevel = outputService.getLogLevel();
+        const newLevel = currentLevel === 'DEBUG' ? 'INFO' : 'DEBUG';
+        outputService.setLogLevel(newLevel as any);
+
+        const status = newLevel === 'DEBUG' ? 'enabled' : 'disabled';
+        const message = `Verbose logging ${status}`;
+        outputService.info(message);
+        vscode.window.showInformationMessage(`Gorch: ${message}`);
+    });
+
     // 内部命令：更新诊断
     const updateDiagnosticsCommand = vscode.commands.registerCommand('gorch.internal.updateDiagnostics', async () => {
         outputService.info('Triggering diagnostic update for all open .gorch files');
@@ -145,6 +157,7 @@ function registerCommands(
         showOutputCommand,
         clearOutputCommand,
         checkDiagnosticsCommand,
+        toggleVerboseLoggingCommand,
         updateDiagnosticsCommand
     );
 }

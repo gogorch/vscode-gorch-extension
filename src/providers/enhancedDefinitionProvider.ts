@@ -34,11 +34,16 @@ export class EnhancedDefinitionProvider implements vscode.DefinitionProvider {
             return undefined;
         }
 
-        this.outputService.debug(`Definition request for word: ${context.word} at ${context.position.line}:${context.position.character}`);
+        this.outputService.logDefinitionStart(
+            context.word,
+            `${context.position.line}:${context.position.character}`,
+            'gorch-file'
+        );
 
         // 检查是否在OPERATOR指令中
         const operatorMatch = this.parseOperatorInstruction(context);
         if (operatorMatch) {
+            this.outputService.debug(`🔧 Detected OPERATOR instruction context for struct: ${operatorMatch.structName}`, 'Navigation');
             return await this.handleOperatorDefinition(context, operatorMatch);
         }
 
@@ -54,7 +59,7 @@ export class EnhancedDefinitionProvider implements vscode.DefinitionProvider {
             return operatorLocation;
         }
 
-        this.outputService.debug(`No definition found for: ${context.word}`);
+        this.outputService.debug(`❌ No definition found for: ${context.word}`, 'Navigation');
         return undefined;
     }
 
@@ -125,52 +130,67 @@ export class EnhancedDefinitionProvider implements vscode.DefinitionProvider {
      * 处理OPERATOR指令中的定义跳转
      */
     private async handleOperatorDefinition(
-        context: DefinitionContext, 
+        context: DefinitionContext,
         operatorMatch: OperatorMatch
     ): Promise<vscode.Definition | undefined> {
-        
+
         const { structName } = operatorMatch;
-        this.outputService.debug(`Looking for Go struct: ${structName}`);
+        this.outputService.debug(`🔍 Looking for Go struct: ${structName} (from OPERATOR instruction)`, 'Navigation');
 
         // 首先尝试使用Go扩展查找
+        this.outputService.debug(`📡 Step 1: Trying Go extension lookup for struct: ${structName}`, 'Navigation');
         try {
             const goExtensionResult = await GoUtils.findStructUsingGoExtension(structName);
             if (goExtensionResult && goExtensionResult.length > 0) {
+                this.outputService.logGoExtensionLookup(structName, true);
                 this.outputService.logDefinitionJump(
                     `${context.document.fileName}:${context.position.line}`,
                     goExtensionResult[0].uri.fsPath,
-                    'struct'
+                    'struct',
+                    'go-extension'
                 );
                 return goExtensionResult;
+            } else {
+                this.outputService.logGoExtensionLookup(structName, false);
             }
         } catch (error) {
-            this.outputService.warn(`Go extension lookup failed: ${error}`);
+            this.outputService.logGoExtensionLookup(structName, false, String(error));
         }
 
         // 回退到索引查找
+        this.outputService.debug(`📚 Step 2: Trying index lookup for struct: ${structName}`, 'Navigation');
         const goStruct = this.indexService.findGoStructByName(structName);
         if (goStruct) {
+            this.outputService.logIndexLookup(structName, true, 'struct');
             const location = new vscode.Location(goStruct.uri, goStruct.range);
             this.outputService.logDefinitionJump(
                 `${context.document.fileName}:${context.position.line}`,
                 goStruct.uri.fsPath,
-                'struct'
+                'struct',
+                'index'
             );
             return location;
+        } else {
+            this.outputService.logIndexLookup(structName, false, 'struct');
         }
 
         // 如果索引中没有找到，尝试实时搜索
+        this.outputService.debug(`🔎 Step 3: Trying real-time scan for struct: ${structName}`, 'Navigation');
         const validationResult = await GoUtils.validateGoStruct(structName);
         if (validationResult.exists && validationResult.location) {
+            this.outputService.logRealTimeScan(structName, true);
             this.outputService.logDefinitionJump(
                 `${context.document.fileName}:${context.position.line}`,
                 validationResult.location.uri.fsPath,
-                'struct'
+                'struct',
+                'real-time-scan'
             );
             return validationResult.location;
+        } else {
+            this.outputService.logRealTimeScan(structName, false);
         }
 
-        this.outputService.warn(`Go struct '${structName}' not found`);
+        this.outputService.warn(`❌ Go struct '${structName}' not found in any lookup method`, 'Navigation');
         return undefined;
     }
 
@@ -191,20 +211,27 @@ export class EnhancedDefinitionProvider implements vscode.DefinitionProvider {
 
             // 检查光标是否在FRAGMENT名称上
             if (position.character >= matchStart && position.character <= matchEnd && fragmentName === word) {
+                this.outputService.debug(`🧩 Detected UNFOLD instruction context for fragment: ${fragmentName}`, 'Navigation');
+                this.outputService.debug(`📚 Looking up fragment in index: ${fragmentName}`, 'Navigation');
+
                 const fragment = this.indexService.findFragmentByName(fragmentName);
-                
+
                 if (fragment) {
+                    this.outputService.logIndexLookup(fragmentName, true, 'fragment');
                     const fragmentDocument = await vscode.workspace.openTextDocument(vscode.Uri.parse(fragment.documentUri));
                     const fragmentPosition = new vscode.Position(fragment.startLine, 0);
                     const location = new vscode.Location(fragmentDocument.uri, fragmentPosition);
-                    
+
                     this.outputService.logDefinitionJump(
                         `${context.document.fileName}:${context.position.line}`,
                         fragmentDocument.uri.fsPath,
-                        'fragment'
+                        'fragment',
+                        'index'
                     );
-                    
+
                     return location;
+                } else {
+                    this.outputService.logIndexLookup(fragmentName, false, 'fragment');
                 }
             }
         }
@@ -220,46 +247,63 @@ export class EnhancedDefinitionProvider implements vscode.DefinitionProvider {
 
         // 检查是否是关键字
         if (this.isKeyword(word)) {
+            this.outputService.debug(`⏭️ Skipping keyword: ${word}`, 'Navigation');
             return undefined;
         }
 
         // 检查是否在REGISTER块内（避免在REGISTER块内查找算子调用）
         if (this.isInRegisterBlock(context)) {
+            this.outputService.debug(`⏭️ Skipping operator lookup in REGISTER block: ${word}`, 'Navigation');
             return undefined;
         }
+
+        this.outputService.debug(`🎯 Detected potential operator call: ${word}`, 'Navigation');
 
         // 查找匹配的算子
+        this.outputService.debug(`📚 Step 1: Looking up operator in index: ${word}`, 'Navigation');
         const operator = this.indexService.findOperatorByName(word);
         if (!operator) {
+            this.outputService.logIndexLookup(word, false, 'operator');
             return undefined;
         }
 
-        this.outputService.debug(`Found operator: ${operator.name} -> ${operator.structName}`);
+        this.outputService.logIndexLookup(word, true, 'operator');
+        this.outputService.debug(`✅ Found operator: ${operator.name} -> struct: ${operator.structName}`, 'Navigation');
 
         // 查找对应的Go struct
+        this.outputService.debug(`📚 Step 2: Looking up Go struct in index: ${operator.structName}`, 'Navigation');
         const goStruct = this.indexService.findGoStructByName(operator.structName);
         if (goStruct) {
+            this.outputService.logIndexLookup(operator.structName, true, 'struct');
             const location = new vscode.Location(goStruct.uri, goStruct.range);
             this.outputService.logDefinitionJump(
                 `${context.document.fileName}:${context.position.line}`,
                 goStruct.uri.fsPath,
-                'operator'
+                'operator',
+                'index'
             );
             return location;
+        } else {
+            this.outputService.logIndexLookup(operator.structName, false, 'struct');
         }
 
         // 如果索引中没有找到，尝试实时搜索
+        this.outputService.debug(`🔎 Step 3: Trying real-time scan for struct: ${operator.structName}`, 'Navigation');
         const validationResult = await GoUtils.validateGoStruct(operator.structName);
         if (validationResult.exists && validationResult.location) {
+            this.outputService.logRealTimeScan(operator.structName, true);
             this.outputService.logDefinitionJump(
                 `${context.document.fileName}:${context.position.line}`,
                 validationResult.location.uri.fsPath,
-                'operator'
+                'operator',
+                'real-time-scan'
             );
             return validationResult.location;
+        } else {
+            this.outputService.logRealTimeScan(operator.structName, false);
         }
 
-        this.outputService.warn(`Go struct '${operator.structName}' for operator '${operator.name}' not found`);
+        this.outputService.warn(`❌ Go struct '${operator.structName}' for operator '${operator.name}' not found in any lookup method`, 'Navigation');
         return undefined;
     }
 

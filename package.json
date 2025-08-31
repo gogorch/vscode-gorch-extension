@@ -25,7 +25,8 @@
     "onCommand:gorch.refreshIndex",
     "onCommand:gorch.showOutput",
     "onCommand:gorch.clearOutput",
-    "onCommand:gorch.checkDiagnostics"
+    "onCommand:gorch.checkDiagnostics",
+    "onCommand:gorch.toggleVerboseLogging"
   ],
   "contributes": {
     "commands": [
@@ -57,6 +58,11 @@
       {
         "command": "gorch.checkDiagnostics",
         "title": "Check Diagnostics (Debug)",
+        "category": "Gorch"
+      },
+      {
+        "command": "gorch.toggleVerboseLogging",
+        "title": "Toggle Verbose Logging",
         "category": "Gorch"
       }
     ],
