@@ -30,6 +30,8 @@ export class GorchDiagnosticProvider {
             const allOperators = this.indexService.getAllOperators();
             const allFragments = this.indexService.getAllFragments();
 
+            this.outputService.debug(`Updating diagnostics for ${document.fileName}, found ${allOperators.length} operators total`);
+
             // 检查算子序号唯一性
             this.checkOperatorSequenceUniqueness(allOperators, diagnostics, document);
 
@@ -67,36 +69,47 @@ export class GorchDiagnosticProvider {
     ): void {
         const sequenceMap = new Map<number, OperatorInfo[]>();
 
-        // 按序号分组
+        this.outputService.debug(`Checking sequence uniqueness for ${operators.length} operators`);
+
+        // 按序号分组所有算子（不仅仅是当前文档的）
         operators.forEach(op => {
             const seq = parseInt(op.sequence || '0');
-            if (!sequenceMap.has(seq)) {
-                sequenceMap.set(seq, []);
+            this.outputService.debug(`Operator ${op.name} has sequence ${seq} in ${op.documentUri}`);
+            if (seq > 0) { // 忽略序号为0的无效算子
+                if (!sequenceMap.has(seq)) {
+                    sequenceMap.set(seq, []);
+                }
+                sequenceMap.get(seq)!.push(op);
             }
-            sequenceMap.get(seq)!.push(op);
         });
 
-        // 检查重复序号
+        // 检查重复序号，只对当前文档中的算子报错
         sequenceMap.forEach((ops, sequence) => {
             if (ops.length > 1) {
-                ops.forEach(op => {
-                    if (op.documentUri === document.uri.toString()) {
-                        const range = this.findOperatorRange(document, op);
-                        if (range) {
-                            // 构建详细的重复信息，包含文件名
-                            const duplicateInfo = ops.map(o => {
-                                const fileName = this.getFileNameFromUri(o.documentUri);
-                                return `${o.name} (${fileName})`;
-                            }).join(', ');
+                this.outputService.debug(`Found ${ops.length} operators with sequence ${sequence}`);
+                // 找到当前文档中的算子
+                const currentDocOperators = ops.filter(op => op.documentUri === document.uri.toString());
+                this.outputService.debug(`${currentDocOperators.length} of them are in current document`);
 
-                            const diagnostic = new vscode.Diagnostic(
-                                range,
-                                `Duplicate operator sequence ${sequence}. Found in: ${duplicateInfo}`,
-                                vscode.DiagnosticSeverity.Error
-                            );
-                            diagnostic.code = 'duplicate-sequence';
-                            diagnostics.push(diagnostic);
-                        }
+                currentDocOperators.forEach(op => {
+                    const range = this.findOperatorRange(document, op);
+                    if (range) {
+                        // 构建详细的重复信息，包含文件名
+                        const duplicateInfo = ops.map(o => {
+                            const fileName = this.getFileNameFromUri(o.documentUri);
+                            return `${o.name} (${fileName})`;
+                        }).join(', ');
+
+                        const diagnostic = new vscode.Diagnostic(
+                            range,
+                            `Duplicate operator sequence ${sequence}. Found in: ${duplicateInfo}`,
+                            vscode.DiagnosticSeverity.Error
+                        );
+                        diagnostic.code = 'duplicate-sequence';
+                        diagnostics.push(diagnostic);
+                        this.outputService.debug(`Added sequence conflict diagnostic for operator ${op.name}`);
+                    } else {
+                        this.outputService.warn(`Could not find range for operator ${op.name} in document`);
                     }
                 });
             }
@@ -113,35 +126,38 @@ export class GorchDiagnosticProvider {
     ): void {
         const nameMap = new Map<string, OperatorInfo[]>();
 
-        // 按名称分组
+        // 按名称分组所有算子（不仅仅是当前文档的）
         operators.forEach(op => {
-            if (!nameMap.has(op.name)) {
-                nameMap.set(op.name, []);
+            if (op.name && op.name.trim()) { // 确保算子名称有效
+                if (!nameMap.has(op.name)) {
+                    nameMap.set(op.name, []);
+                }
+                nameMap.get(op.name)!.push(op);
             }
-            nameMap.get(op.name)!.push(op);
         });
 
-        // 检查重复名称
+        // 检查重复名称，只对当前文档中的算子报错
         nameMap.forEach((ops, name) => {
             if (ops.length > 1) {
-                ops.forEach(op => {
-                    if (op.documentUri === document.uri.toString()) {
-                        const range = this.findOperatorRange(document, op);
-                        if (range) {
-                            // 构建详细的重复信息，包含文件名和包路径
-                            const duplicateInfo = ops.map(o => {
-                                const fileName = this.getFileNameFromUri(o.documentUri);
-                                return `${o.packagePath}/${o.filePath} (${fileName})`;
-                            }).join(', ');
+                // 找到当前文档中的算子
+                const currentDocOperators = ops.filter(op => op.documentUri === document.uri.toString());
 
-                            const diagnostic = new vscode.Diagnostic(
-                                range,
-                                `Duplicate operator name '${name}'. Found in: ${duplicateInfo}`,
-                                vscode.DiagnosticSeverity.Error
-                            );
-                            diagnostic.code = 'duplicate-name';
-                            diagnostics.push(diagnostic);
-                        }
+                currentDocOperators.forEach(op => {
+                    const range = this.findOperatorRange(document, op);
+                    if (range) {
+                        // 构建详细的重复信息，包含文件名和包路径
+                        const duplicateInfo = ops.map(o => {
+                            const fileName = this.getFileNameFromUri(o.documentUri);
+                            return `${o.packagePath}/${o.filePath} (${fileName})`;
+                        }).join(', ');
+
+                        const diagnostic = new vscode.Diagnostic(
+                            range,
+                            `Duplicate operator name '${name}'. Found in: ${duplicateInfo}`,
+                            vscode.DiagnosticSeverity.Error
+                        );
+                        diagnostic.code = 'duplicate-name';
+                        diagnostics.push(diagnostic);
                     }
                 });
             }
@@ -273,6 +289,15 @@ export class GorchDiagnosticProvider {
      * 查找算子在文档中的位置范围
      */
     private findOperatorRange(document: vscode.TextDocument, operator: OperatorInfo): vscode.Range | undefined {
+        // 使用算子的startLine和endLine信息，这些信息在索引时已经计算好了
+        if (operator.startLine !== undefined && operator.endLine !== undefined) {
+            const startPos = new vscode.Position(operator.startLine, 0);
+            const endPos = new vscode.Position(operator.endLine, Number.MAX_SAFE_INTEGER);
+            const actualEndPos = document.validatePosition(endPos);
+            return new vscode.Range(startPos, actualEndPos);
+        }
+
+        // 如果没有行号信息，回退到正则表达式匹配
         const text = document.getText();
         const operatorRegex = new RegExp(
             `OPERATOR\\s*\\(\\s*"${this.escapeRegex(operator.filePath)}"\\s*,\\s*"${this.escapeRegex(operator.structName)}"\\s*,\\s*"${this.escapeRegex(operator.name)}"\\s*,\\s*${operator.sequence}\\s*\\)`,
@@ -283,9 +308,11 @@ export class GorchDiagnosticProvider {
         if (match) {
             const startPos = document.positionAt(match.index);
             const endPos = document.positionAt(match.index + match[0].length);
+            this.outputService.debug(`Found operator ${operator.name} at range ${startPos.line}:${startPos.character} - ${endPos.line}:${endPos.character}`);
             return new vscode.Range(startPos, endPos);
         }
 
+        this.outputService.warn(`Could not find operator ${operator.name} in document using regex`);
         return undefined;
     }
 

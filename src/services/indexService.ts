@@ -103,6 +103,9 @@ export class IndexService {
                 result.errors
             );
 
+            // 索引更新后，触发所有打开文档的诊断检查
+            this.triggerDiagnosticsUpdate();
+
             return result;
 
         } catch (error) {
@@ -277,7 +280,8 @@ export class IndexService {
                     startLine: operatorStartPos.line,
                     endLine: operatorEndPos.line
                 };
-                
+
+                this.outputService.debug(`Parsed operator: ${operator.name}, sequence: ${operator.sequence}, from ${document.fileName}`);
                 operators.push(operator);
             }
         }
@@ -368,6 +372,14 @@ export class IndexService {
                 this.refreshIndex();
             }
         }, 1000);
+    }
+
+    /**
+     * 触发诊断更新
+     */
+    private triggerDiagnosticsUpdate(): void {
+        // 发送自定义事件，通知诊断提供器更新
+        vscode.commands.executeCommand('gorch.internal.updateDiagnostics');
     }
 
     /**

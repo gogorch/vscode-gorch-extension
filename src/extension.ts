@@ -7,6 +7,7 @@ import * as vscode from 'vscode';
 import { EnhancedDefinitionProvider } from './providers/enhancedDefinitionProvider';
 import { GorchDiagnosticProvider } from './providers/diagnosticProvider';
 import { GorchDocumentSymbolProvider } from './providers/documentSymbolProvider';
+import { GorchHoverProvider } from './providers/hoverProvider';
 import { IndexService } from './services/indexService';
 import { OutputService } from './services/outputService';
 
@@ -20,14 +21,14 @@ export function activate(context: vscode.ExtensionContext) {
     // 初始化索引
     initializeIndex(indexService, outputService);
 
-    // 注册命令
-    registerCommands(context, indexService, outputService);
-
     // 注册语言服务提供器
-    registerLanguageProviders(context, outputService);
+    const diagnosticProvider = registerLanguageProviders(context, outputService);
+
+    // 注册命令
+    registerCommands(context, indexService, outputService, diagnosticProvider);
 
     // 设置文档监听器
-    setupDocumentListeners(context, outputService);
+    setupDocumentListeners(context, outputService, diagnosticProvider);
 
     outputService.info('Extension activation completed');
 }
@@ -53,7 +54,8 @@ async function initializeIndex(indexService: IndexService, outputService: Output
 function registerCommands(
     context: vscode.ExtensionContext,
     indexService: IndexService,
-    outputService: OutputService
+    outputService: OutputService,
+    diagnosticProvider: GorchDiagnosticProvider
 ): void {
 
     // 格式化命令
@@ -107,19 +109,50 @@ function registerCommands(
         outputService.info('Output cleared');
     });
 
+    // 手动检查诊断命令（用于调试）
+    const checkDiagnosticsCommand = vscode.commands.registerCommand('gorch.checkDiagnostics', async () => {
+        outputService.info('Manual diagnostic check requested');
+        outputService.show(); // 显示输出窗口
+
+        const gorchDocs = vscode.workspace.textDocuments.filter(doc => doc.languageId === 'gorch');
+        outputService.info(`Found ${gorchDocs.length} open .gorch documents`);
+
+        for (const document of gorchDocs) {
+            outputService.info(`Checking diagnostics for: ${document.fileName}`);
+            await diagnosticProvider.updateDiagnostics(document);
+        }
+
+        vscode.window.showInformationMessage(`Diagnostic check completed for ${gorchDocs.length} files`);
+    });
+
+    // 内部命令：更新诊断
+    const updateDiagnosticsCommand = vscode.commands.registerCommand('gorch.internal.updateDiagnostics', async () => {
+        outputService.info('Triggering diagnostic update for all open .gorch files');
+        // 更新所有打开的.gorch文档的诊断
+        const gorchDocs = vscode.workspace.textDocuments.filter(doc => doc.languageId === 'gorch');
+        outputService.debug(`Found ${gorchDocs.length} open .gorch documents for diagnostic update`);
+
+        for (const document of gorchDocs) {
+            outputService.debug(`Updating diagnostics for: ${document.fileName}`);
+            await diagnosticProvider.updateDiagnostics(document);
+        }
+    });
+
     context.subscriptions.push(
         formatCommand,
         validateCommand,
         refreshIndexCommand,
         showOutputCommand,
-        clearOutputCommand
+        clearOutputCommand,
+        checkDiagnosticsCommand,
+        updateDiagnosticsCommand
     );
 }
 
 /**
  * 注册语言服务提供器
  */
-function registerLanguageProviders(context: vscode.ExtensionContext, outputService: OutputService): void {
+function registerLanguageProviders(context: vscode.ExtensionContext, outputService: OutputService): GorchDiagnosticProvider {
     // 注册增强的定义提供器
     const definitionProvider = vscode.languages.registerDefinitionProvider(
         { scheme: 'file', language: 'gorch' },
@@ -132,27 +165,48 @@ function registerLanguageProviders(context: vscode.ExtensionContext, outputServi
         new GorchDocumentSymbolProvider()
     );
 
+    // 注册悬停提供器
+    const hoverProvider = vscode.languages.registerHoverProvider(
+        { scheme: 'file', language: 'gorch' },
+        new GorchHoverProvider()
+    );
+
     // 注册诊断提供器
     const diagnosticCollection = vscode.languages.createDiagnosticCollection('gorch');
     const diagnosticProvider = new GorchDiagnosticProvider(diagnosticCollection);
 
-    // 存储诊断提供器引用，供文档监听器使用
-    (context as any).diagnosticProvider = diagnosticProvider;
+
+
+    // 立即检查当前打开的所有.gorch文件
+    const checkInitialDocuments = async () => {
+        const gorchDocs = vscode.workspace.textDocuments.filter(doc => doc.languageId === 'gorch');
+        outputService.info(`Found ${gorchDocs.length} open .gorch documents for initial diagnostic check`);
+
+        for (const document of gorchDocs) {
+            outputService.debug(`Running initial diagnostic check for: ${document.fileName}`);
+            await diagnosticProvider.updateDiagnostics(document);
+        }
+    };
+
+    // 延迟执行，确保索引已经初始化
+    setTimeout(checkInitialDocuments, 1000);
 
     context.subscriptions.push(
         definitionProvider,
         documentSymbolProvider,
+        hoverProvider,
         diagnosticCollection
     );
 
     outputService.debug('Language providers registered');
+
+    return diagnosticProvider;
 }
 
 /**
  * 设置文档监听器
  */
-function setupDocumentListeners(context: vscode.ExtensionContext, outputService: OutputService): void {
-    const diagnosticProvider = (context as any).diagnosticProvider as GorchDiagnosticProvider;
+function setupDocumentListeners(context: vscode.ExtensionContext, outputService: OutputService, diagnosticProvider: GorchDiagnosticProvider): void {
 
     // 监听文档变化，实时检查错误
     const documentChangeListener = vscode.workspace.onDidChangeTextDocument(async (event) => {

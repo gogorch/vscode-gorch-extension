@@ -24,7 +24,8 @@
     "onCommand:gorch.validate",
     "onCommand:gorch.refreshIndex",
     "onCommand:gorch.showOutput",
-    "onCommand:gorch.clearOutput"
+    "onCommand:gorch.clearOutput",
+    "onCommand:gorch.checkDiagnostics"
   ],
   "contributes": {
     "commands": [
@@ -51,6 +52,11 @@
       {
         "command": "gorch.clearOutput",
         "title": "Clear Output",
+        "category": "Gorch"
+      },
+      {
+        "command": "gorch.checkDiagnostics",
+        "title": "Check Diagnostics (Debug)",
         "category": "Gorch"
       }
     ],
