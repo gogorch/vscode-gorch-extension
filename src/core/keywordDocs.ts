@@ -235,14 +235,21 @@ START("main") {
 ### 语法
 
 \`\`\`gorch
-WAIT("event_name_1", "event_name_2")
+WAIT("event_name")
 \`\`\`
 
 ### 参数
 
 1.  **事件名称 (string)**:
-    *   必需，可一个或多个。
     *   要等待的事件名称，对应 \`GO\` 指令中定义的事件。
+
+2. 可选参数：
+
+| 参数 | 说明 | 示例 |
+|------|------|------|
+| \`timeout\` | 等待超时时间（从开始等待时计算） | \`timeout=30s\` |
+| \`totalTimeout\` | 总超时时间（从任务开始执行时计算） | \`totalTimeout=60s\` |
+| \`allowUnstarted\` | 允许等待未启动的任务 | \`allowUnstarted=true\` |
 
 ### 示例
 
@@ -268,6 +275,7 @@ SKIP(OperatorToSkip)
 \`\`\`gorch
 START("main") {
     OperatorA -> SKIP(OperatorB) -> OperatorC
+    // 如果在OperatorB算子内执行SkipSerial函数，则会跳过OperatorC函数的执行
 }
 \`\`\`
 `,
