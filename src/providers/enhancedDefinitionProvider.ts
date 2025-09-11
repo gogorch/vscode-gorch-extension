@@ -8,6 +8,7 @@ import { OperatorInfo, FragmentInfo, DefinitionContext, OperatorMatch } from '..
 import { IndexService } from '../services/indexService';
 import { OutputService } from '../services/outputService';
 import { GoUtils } from '../utils/goUtils';
+import { parseOperatorLine } from '../services/parser';
 
 export class EnhancedDefinitionProvider implements vscode.DefinitionProvider {
     private indexService: IndexService;
@@ -90,37 +91,15 @@ export class EnhancedDefinitionProvider implements vscode.DefinitionProvider {
     private parseOperatorInstruction(context: DefinitionContext): OperatorMatch | undefined {
         const { lineText, position } = context;
         
-        // 检查当前行是否包含OPERATOR指令
-        const operatorRegex = /OPERATOR\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*(\d+)\s*\)/;
-        const match = operatorRegex.exec(lineText);
+        const operatorMatch = parseOperatorLine(lineText);
         
-        if (!match) {
+        if (!operatorMatch) {
             return undefined;
         }
 
-        // 计算各个参数在行中的位置
-        const fullMatch = match[0];
-        const startIndex = lineText.indexOf(fullMatch);
-        
-        // 找到第二个参数（struct名称）的位置
-        const firstQuoteEnd = lineText.indexOf('"', startIndex) + 1;
-        const firstParamEnd = lineText.indexOf('"', firstQuoteEnd);
-        const secondQuoteStart = lineText.indexOf('"', firstParamEnd + 1);
-        const secondQuoteEnd = lineText.indexOf('"', secondQuoteStart + 1);
-
-        // 检查光标是否在第二个参数（struct名称）上
-        if (position.character >= secondQuoteStart && position.character <= secondQuoteEnd) {
-            return {
-                fullMatch: fullMatch,
-                packagePath: match[1],
-                structName: match[2],
-                operatorName: match[3],
-                sequence: match[4],
-                startIndex: startIndex,
-                endIndex: startIndex + fullMatch.length,
-                structNameStart: secondQuoteStart + 1,
-                structNameEnd: secondQuoteEnd
-            };
+        // 检查光标是否在struct名称上
+        if (position.character >= operatorMatch.structNameStart && position.character <= operatorMatch.structNameEnd) {
+            return operatorMatch;
         }
 
         return undefined;

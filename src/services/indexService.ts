@@ -257,8 +257,8 @@ export class IndexService {
             const packagePath = registerMatch[1];
             const registerBlock = registerMatch[2];
 
-            // 匹配 OPERATOR 指令
-            const operatorRegex = /OPERATOR\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*"([^"]+)"\s*,\s*(\d+)\s*\)/g;
+            // 匹配 OPERATOR 指令 (兼容3/4个参数)
+            const operatorRegex = /OPERATOR\s*\(\s*"([^"]+)"\s*,\s*"([^"]+)"\s*(?:,\s*"([^"]+)"\s*)?,\s*(\d+)\s*\)/g;
             let operatorMatch;
 
             while ((operatorMatch = operatorRegex.exec(registerBlock)) !== null) {
@@ -271,7 +271,7 @@ export class IndexService {
                 );
 
                 const operator: OperatorInfo = {
-                    name: operatorMatch[3],
+                    name: operatorMatch[3] || operatorMatch[2], // 如果没有提供算子名，则使用 structName
                     structName: operatorMatch[2],
                     packagePath: packagePath,
                     filePath: operatorMatch[1],

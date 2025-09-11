@@ -105,11 +105,15 @@ export interface DefinitionContext {
     lineText: string;
 }
 
-// OPERATOR 指令解析结果
+// OPERATOR 指令解析结果（同时兼容 3 参数与 4 参数）
 export interface OperatorMatch {
     fullMatch: string;
     packagePath: string;
     structName: string;
+    /**
+     * 4 参数场景：第 3 个显式算子名
+     * 3 参数场景：与 structName 相同
+     */
     operatorName: string;
     sequence: string;
     startIndex: number;
