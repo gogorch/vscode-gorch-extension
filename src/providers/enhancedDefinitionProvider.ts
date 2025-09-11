@@ -9,6 +9,7 @@ import { IndexService } from '../services/indexService';
 import { OutputService } from '../services/outputService';
 import { GoUtils } from '../utils/goUtils';
 import { parseOperatorLine } from '../services/parser';
+import { keywordDocs } from '../core/keywordDocs';
 
 export class EnhancedDefinitionProvider implements vscode.DefinitionProvider {
     private indexService: IndexService;
@@ -40,6 +41,22 @@ export class EnhancedDefinitionProvider implements vscode.DefinitionProvider {
             `${context.position.line}:${context.position.character}`,
             'gorch-file'
         );
+
+        // 检查是否为内置关键字
+        if (this.isKeyword(context.word)) {
+            const doc = keywordDocs[context.word];
+            if (doc) {
+                // 创建一个虚拟的markdown文件并打开它
+                const content = new vscode.MarkdownString(doc).value;
+                const uri = vscode.Uri.parse(`untitled:${context.word}.md`);
+                const docToOpen = await vscode.workspace.openTextDocument(uri);
+                const editor = await vscode.window.showTextDocument(docToOpen, { preview: true });
+                await editor.edit(editBuilder => {
+                    editBuilder.insert(new vscode.Position(0, 0), content);
+                });
+                return; // 返回，因为我们已经处理了跳转
+            }
+        }
 
         // 检查是否在OPERATOR指令中
         const operatorMatch = this.parseOperatorInstruction(context);

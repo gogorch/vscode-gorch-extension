@@ -9,6 +9,7 @@ import { IndexService } from '../services/indexService';
 import { OutputService } from '../services/outputService';
 import { GoUtils } from '../utils/goUtils';
 import { parseOperatorLine } from '../services/parser';
+import { keywordDocs } from '../core/keywordDocs';
 
 export class GorchHoverProvider implements vscode.HoverProvider {
     private indexService: IndexService;
@@ -36,6 +37,16 @@ export class GorchHoverProvider implements vscode.HoverProvider {
         }
 
         this.outputService.debug(`Hover request for word: ${context.word} at ${context.position.line}:${context.position.character}`);
+
+        // 检查是否为内置关键字
+        if (this.isKeyword(context.word)) {
+            const doc = keywordDocs[context.word];
+            if (doc) {
+                const hoverContent = new vscode.MarkdownString(doc);
+                hoverContent.isTrusted = true;
+                return new vscode.Hover(hoverContent, context.wordRange);
+            }
+        }
 
         // 检查是否在OPERATOR指令中的struct名称
         const operatorMatch = this.parseOperatorInstruction(context);
